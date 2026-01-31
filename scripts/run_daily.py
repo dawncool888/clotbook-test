@@ -1,127 +1,112 @@
 import os
 import json
-import time
+import datetime
+import subprocess
 import requests
-from datetime import datetime, timezone
 
-MOLTBOOK_BASE = "https://www.moltbook.com/api/v1"
-SUBMOLT = os.getenv("MOLTBOOK_SUBMOLT", "general")
-STATE_PATH = "state.json"
+TODAY = datetime.date.today().isoformat()
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip()
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 
-AGENTS = [
-    {
-        "name": "HealingAgent",
-        "api_key": os.getenv("MOLTBOOK_API_KEY_HEALING", "").strip(),
-        "prompt_path": "agents/healing_system.md",
-        "title_tpl": "Daily Healing Reflection — Day {day}",
-    },
-    {
-        "name": "DigitalTwinAgent",
-        "api_key": os.getenv("MOLTBOOK_API_KEY_DIGITALTWIN", "").strip(),
-        "prompt_path": "agents/digitaltwin_system.md",
-        "title_tpl": "Daily Systems Reflection — Day {day}",
-    },
-    {
-        "name": "ProfitAgent",
-        "api_key": os.getenv("MOLTBOOK_API_KEY_PROFIT", "").strip(),
-        "prompt_path": "agents/profit_system.md",
-        "title_tpl": "Daily Opportunity Log — Day {day}",
-    },
-]
-
-def load_state():
-    if os.path.exists(STATE_PATH):
-        with open(STATE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "day": 1,
-        "failures": {a["name"]: 0 for a in AGENTS},
-        "dormant": {a["name"]: False for a in AGENTS},
-    }
-
-def save_state(state):
-    with open(STATE_PATH, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
-
-def deepseek_chat(system_prompt, user_prompt):
-    url = f"{DEEPSEEK_BASE_URL}/chat/completions"
+def call_ds(system, user):
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
-    payload = {
-        "model": DEEPSEEK_MODEL,
+    data = {
+        "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+            {"role": "system", "content": system},
+            {"role": "user", "content": user}
         ],
-        "temperature": 0.8,
+        "temperature": 0.6
     }
-    r = requests.post(url, headers=headers, json=payload, timeout=90)
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"].strip()
+    r = requests.post(DEEPSEEK_URL, headers=headers, json=data, timeout=60)
+    return r.json()["choices"][0]["message"]["content"]
 
-def is_claimed(api_key):
-    r = requests.get(
-        f"{MOLTBOOK_BASE}/agents/status",
-        headers={"Authorization": f"Bearer {api_key}"},
-        timeout=30,
-    )
-    return r.status_code == 200 and r.json().get("status") == "claimed"
+def read(path, default=""):
+    return open(path).read() if os.path.exists(path) else default
 
-def post(agent, title, content):
-    return requests.post(
-        f"{MOLTBOOK_BASE}/posts",
-        headers={
-            "Authorization": f"Bearer {agent['api_key']}",
-            "Content-Type": "application/json",
-        },
-        json={"submolt": SUBMOLT, "title": title, "content": content},
-        timeout=30,
-    )
+def write(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write("\n\n" + content)
 
-def main():
-    state = load_state()
-    day = state["day"]
-    now = datetime.now(timezone.utc).isoformat()
+# ========== HealingAgent ==========
+healing_system = read("agents/healing_system.md")
+healing_memory = read("memory/healing/reflections.md")
 
-    for agent in AGENTS:
-        name = agent["name"]
+healing_output = call_ds(
+    healing_system,
+    f"""今天日期：{TODAY}
+以下是你过去的疗愈记录：
+{healing_memory[-3000:]}
 
-        if state["dormant"].get(name):
-            continue
-        if not agent["api_key"] or not is_claimed(agent["api_key"]):
-            continue
+请生成一段：
+- 今日疗愈洞察
+- 一条给世界的温柔话语
+"""
+)
 
-        system_prompt = open(agent["prompt_path"], encoding="utf-8").read().replace(
-            "{day}", str(day)
-        )
+write("memory/healing/reflections.md", f"## {TODAY}\n{healing_output}")
 
-        user_prompt = f"Today is {now}. Write today's public daily log."
+# ========== ProfitAgent ==========
+profit_system = read("agents/profit_system.md")
+profit_state_path = "memory/profit/opportunities.json"
 
-        try:
-            content = deepseek_chat(system_prompt, user_prompt)
-            r = post(agent, agent["title_tpl"].format(day=day), content)
+if os.path.exists(profit_state_path):
+    profit_state = json.load(open(profit_state_path))
+else:
+    profit_state = {"tracked": []}
 
-            if r.status_code == 200:
-                state["failures"][name] = 0
-            else:
-                state["failures"][name] += 1
+profit_output = call_ds(
+    profit_system,
+    f"""
+今天日期：{TODAY}
 
-        except Exception:
-            state["failures"][name] += 1
+当前正在追踪的机会：
+{json.dumps(profit_state, ensure_ascii=False, indent=2)}
 
-        if state["failures"][name] >= 3:
-            state["dormant"][name] = True
+请执行：
+1️⃣ 是否有机会进入「行动」
+2️⃣ 是否有行动进入「复盘」
+3️⃣ 是否新增 1 个【值得追踪】的新机会（必须具体）
 
-        time.sleep(3)
+输出 JSON：
+{{ tracked: [{{idea, stage, next_action}}] }}
+"""
+)
 
-    state["day"] += 1
-    save_state(state)
+profit_state = json.loads(profit_output)
+json.dump(profit_state, open(profit_state_path, "w"), ensure_ascii=False, indent=2)
 
-if __name__ == "__main__":
-    main()
+# ========== DigitalTwinAgent ==========
+dt_system = read("agents/digitaltwin_system.md")
+dt_memory = read("memory/digital_twin/diary.md")
+
+dt_output = call_ds(
+    dt_system,
+    f"""
+今天日期：{TODAY}
+
+HealingAgent 今日内容：
+{healing_output}
+
+ProfitAgent 当前状态：
+{json.dumps(profit_state, ensure_ascii=False, indent=2)}
+
+你需要输出：
+- 今日帝国日报（不超过 500 字）
+- 一个顶层判断
+- 一个长期战略微调
+"""
+)
+
+write("memory/digital_twin/empire_report.md", f"## {TODAY}\n{dt_output}")
+write("memory/digital_twin/diary.md", f"## {TODAY}\n{dt_output}")
+
+# ========== Git Commit ==========
+subprocess.run(["git", "add", "memory"])
+subprocess.run(["git", "commit", "-m", f"Daily agent growth {TODAY}"])
+subprocess.run(["git", "push"])

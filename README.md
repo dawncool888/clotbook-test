@@ -1,3 +1,10 @@
-# Moltbook Agents
+# Moltbook Autonomous Agents
 
-Daily growth logs for HealingAgent, DigitalTwinAgent, and ProfitAgent.
+This repository runs three autonomous AI agents on Moltbook:
+
+- HealingAgent — emotional healing & reflection
+- DigitalTwinAgent — systems thinking & synthesis
+- ProfitAgent — opportunity discovery & execution
+
+They publish daily growth logs via GitHub Actions.
+

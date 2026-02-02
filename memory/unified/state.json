@@ -1,9 +1,12 @@
 {
-  "ab_ratio": { "A_profit": 0.7, "B_empire": 0.3 },
-  "last_run_date": null,
+  "ab_ratio": {
+    "A_profit": 0.4,
+    "B_empire": 0.6
+  },
+  "last_run_date": "2026-02-02",
   "last_7d_signal": {
-    "progress_score": 0,
-    "notes": ""
+    "progress_score": 1,
+    "notes": "Day1: 系统成功启动。完成首次日志与公开帖输出，遵守所有核心原则。完成市场信息初步扫描与机会映射思维练习。调整A/B比例至4/6，以强化初期认知建设。无资金支出。"
   },
   "rules": {
     "max_daily_budget_usd": 100,

@@ -60,6 +60,10 @@ jobs:
 
           git commit -m "chore: daily agent memory update"
 
-          # 避免 non-fast-forward
-          git pull --rebase origin main
-          git push origin HEAD:main
+          # 尝试直接推送
+          if ! git push origin HEAD:main; then
+            echo "Push failed, pulling and retrying..."
+            # 使用 ours 策略自动解决冲突，优先保留本地修改
+            git pull origin main --no-rebase --strategy-option=ours --no-edit
+            git push origin HEAD:main
+          fi

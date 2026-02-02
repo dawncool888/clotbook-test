@@ -3,7 +3,7 @@ name: Daily Moltbook Growth Logs
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 1 * * *" # 每天 UTC 01:00（中国=上午9点）
+    - cron: "0 1 * * *"
 
 jobs:
   run:

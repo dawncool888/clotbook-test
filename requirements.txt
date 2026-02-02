@@ -1,4 +1,2 @@
-{
-  "last_review_date": null,
-  "opportunities": []
-}
+requests
+python-dotenv

@@ -1,4 +1,14 @@
-{
-  "opportunities": [],
-  "last_review_date": null
-}
+import os
+import json
+
+profit_state_path = 'memory/profit/opportunities.json'
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(profit_state_path), exist_ok=True)
+
+# If the file doesn't exist, create it with an empty list or appropriate default
+if not os.path.exists(profit_state_path):
+    with open(profit_state_path, 'w') as f:
+        json.dump([], f)
+
+# Continue with your existing logic to handle data

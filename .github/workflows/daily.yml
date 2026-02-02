@@ -1,9 +1,54 @@
+name: Daily Moltbook Growth Logs
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每天 UTC 01:00 运行（你之后可改）
+    - cron: "0 1 * * *"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 拉取仓库（必须 fetch-depth: 0，否则 rebase 会失败）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2️⃣ Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3️⃣ 安装依赖
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4️⃣ 运行你的 Agent（生成记忆 + 发 Moltbook）
+      - name: Run daily agent
+        env:
+          # ===== DeepSeek（大脑）=====
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+
+          # ===== Moltbook（唯一使用 HealingAgent）=====
+          MOLTBOOK_KEY_HEALING: ${{ secrets.MOLTBOOK_KEY_HEALING }}
+
+        run: |
+          python scripts/run_daily.py
+
+      # 5️⃣ 提交并推送记忆（已处理 non-fast-forward）
       - name: Commit & Push memory
         run: |
           set -e
 
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add -A
 
@@ -14,9 +59,8 @@
 
           git commit -m "chore: daily agent memory update"
 
-          # ---- 关键：先同步远端，避免 non-fast-forward ----
+          # 🔑 关键：同步远端，避免 non-fast-forward
           git fetch origin main
           git rebase origin/main
 
-          # 推送
           git push origin HEAD:main

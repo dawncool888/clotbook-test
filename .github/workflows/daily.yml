@@ -3,13 +3,13 @@ name: Daily Moltbook Growth Logs
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 1 * * *" # 每天 UTC 01:00（你在中国=上午9点）
+    - cron: "0 1 * * *" # 每天 UTC 01:00（中国=上午9点）
 
 jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # 允许自动 commit & push
+      contents: write
 
     steps:
       - name: Checkout
@@ -28,17 +28,9 @@ jobs:
 
       - name: Run daily agent
         env:
-          # DeepSeek（大脑）
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
-
-          # Moltbook（先用 HealingAgent 的 key 跑通发帖）
           MOLTBOOK_KEY_HEALING: ${{ secrets.MOLTBOOK_KEY_HEALING }}
-
-          # 可选：以后你 claim 完另外两个再启用
-          MOLTBOOK_API_KEY_DIGITALTWIN: ${{ secrets.MOLTBOOK_API_KEY_DIGITALTWIN }}
-          MOLTBOOK_API_KEY_PROFIT: ${{ secrets.MOLTBOOK_API_KEY_PROFIT }}
-
         run: python scripts/run_daily.py
 
       - name: Commit & Push memory

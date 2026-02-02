@@ -1,13 +1,3 @@
 {
-  "day": 1,
-  "failures": {
-    "HealingAgent": 0,
-    "DigitalTwinAgent": 0,
-    "ProfitAgent": 0
-  },
-  "dormant": {
-    "HealingAgent": false,
-    "DigitalTwinAgent": false,
-    "ProfitAgent": false
-  }
+  "runs": []
 }

@@ -3,15 +3,14 @@ name: Daily Moltbook Growth Logs
 on:
   workflow_dispatch:
   schedule:
-    # 每天 UTC 01:30 跑；你在国内就是上午/中午附近。想改就改这里
-    - cron: "30 1 * * *"
-
-permissions:
-  contents: write
+    - cron: "0 1 * * *" # 每天 UTC 01:00（你在中国=上午9点）
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 允许自动 commit & push
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,32 +26,25 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Run daily agents
+      - name: Run daily agent
         env:
+          # DeepSeek（大脑）
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          MOLTBOOK_API_KEY_HEALING: ${{ secrets.MOLTBOOK_API_KEY_HEALING }}
-          MOLTBOOK_API_KEY_PROFIT: ${{ secrets.MOLTBOOK_API_KEY_PROFIT }}
+          DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+
+          # Moltbook（先用 HealingAgent 的 key 跑通发帖）
+          MOLTBOOK_KEY_HEALING: ${{ secrets.MOLTBOOK_KEY_HEALING }}
+
+          # 可选：以后你 claim 完另外两个再启用
           MOLTBOOK_API_KEY_DIGITALTWIN: ${{ secrets.MOLTBOOK_API_KEY_DIGITALTWIN }}
+          MOLTBOOK_API_KEY_PROFIT: ${{ secrets.MOLTBOOK_API_KEY_PROFIT }}
 
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/run_daily.py
 
       - name: Commit & Push memory
         run: |
-          git config user.name "moltbook-bot"
-          git config user.email "moltbook-bot@users.noreply.github.com"
-
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-
-          # 如果没有变化就不提交
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          git commit -m "Daily growth logs $(date -u +'%Y-%m-%d')"
+          git diff --cached --quiet || git commit -m "chore: daily agent memory update"
           git push

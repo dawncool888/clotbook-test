@@ -6,8 +6,8 @@ on:
     - cron: "0 1 * * *" # 每天 UTC 01:00（北京时间 09:00）
 
 concurrency:
-  group: daily-moltbook-growth
-  cancel-in-progress: false
+  group: daily-moltbook
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -27,24 +27,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Run daily agent (healing only)
+      - name: Ensure memory dirs
+        run: |
+          mkdir -p memory/unified/logs
+          mkdir -p memory/profit
+          mkdir -p memory/digitaltwin
+
+      - name: Run daily agents (Healing only)
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
-
-          # 只用 HealingAgent key（你 repo secrets 里必须有这个名字）
           MOLTBOOK_KEY_HEALING: ${{ secrets.MOLTBOOK_KEY_HEALING }}
-
-          # 可选：如果你不需要板块概念可删掉这一行
           MOLTBOOK_SUBMOLT: general
         run: python scripts/run_daily.py
 
-      - name: Commit & Push memory
+      - name: Commit & Push memory (merge remote safely)
         run: |
           set -e
 
@@ -60,6 +61,8 @@ jobs:
 
           git commit -m "chore: daily agent memory update"
 
-          # 避免 non-fast-forward
-          git pull --rebase origin main
+          # 同步远端并自动处理冲突：冲突时优先保留本次生成的文件
+          git fetch origin main
+          git merge -X ours origin/main --no-edit || true
+
           git push origin HEAD:main

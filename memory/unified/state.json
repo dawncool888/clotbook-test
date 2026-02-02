@@ -1,0 +1,13 @@
+{
+  "ab_ratio": { "A_profit": 0.7, "B_empire": 0.3 },
+  "last_run_date": null,
+  "last_7d_signal": {
+    "progress_score": 0,
+    "notes": ""
+  },
+  "rules": {
+    "max_daily_budget_usd": 100,
+    "weekly_review_day": "Sun",
+    "allow_new_opportunities_only_on_review_day": true
+  }
+}
